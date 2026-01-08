@@ -77,6 +77,8 @@ Validate that the SGX plugin and SGX quote helper are running. If the below ment
 kubectl get pods -n kube-system | grep sgx
 ```
 
+Expected output of above command:
+
 ```bash
 sgx-plugin-64nnt            1/1   Running   0   42m
 sgx-quote-helper-9gnrf      1/1   Running   0   17m
