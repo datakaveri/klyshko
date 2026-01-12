@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2025 - for information on the respective copyright owner
+ * see the NOTICE file and/or the repository https://github.com/carbynestack/klyshko.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #define _GNU_SOURCE
 #include <assert.h>
 #include <ctype.h>
@@ -43,12 +49,12 @@ EXTERN int other_player_number;
 EXTERN int player_number_defined;
 EXTERN int number_of_players;
 EXTERN char* kii_job_id_defined;
-//***$$$***
+
 #define HTTP_RESPONSE                                    \
     "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" \
     "<h2>mbed TLS Test Server</h2>\r\n"                  \
     "<p>Successful connection using: %s</p>\r\n"
-//***$$$***
+    
 EXTERN void box_out(const char *str);
 EXTERN int ssl_client_setup_and_handshake();
 EXTERN int ssl_server_setup_and_handshake();
@@ -57,4 +63,24 @@ EXTERN int ssl_server_setup_and_handshake();
 EXTERN char** kii_endpoints;
 EXTERN int base_port;
 
-#define KEY_LENGTH 128
+#define KEY_LENGTH 128                 // MAC key length in bytes
+#define MAC_KEY_BUF_SIZE KEY_LENGTH    // Destination buffers for MAC keys
+#define ISV_ID_BUF_SIZE 2             // 2-byte ISV_PROD_ID and ISV_SVN buffers
+#define ISV_ID_SRC_SIZE 2             // Source size for ISV_PROD_ID and ISV_SVN (uint16_t = 2 bytes)
+#define SEED_BUF_SIZE 17               // Seed buffer size (16 bytes data + 1 terminator)
+
+/**
+ * Safe memcpy wrapper with explicit bounds checking
+ * Returns 0 on success, -1 on error
+ * This function ensures destination buffer is large enough before copying
+ */
+static inline int safe_memcpy(void *dst, size_t dst_size, const void *src, size_t src_size)
+{
+    if (!dst || !src)
+        return -1;
+    if (src_size > dst_size)
+        return -1;
+    
+    memcpy(dst, src, src_size);
+    return 0;
+}

@@ -1,6 +1,6 @@
 # Copyright (C) 2023 Gramine contributors
 # SPDX-License-Identifier: BSD-3-Clause
-
+# Added support to support CRG in TEE 
 ARCH_LIBDIR ?= /lib/$(shell $(CC) -dumpmachine)
 
 ifeq ($(DEBUG),1)
@@ -19,17 +19,9 @@ RA_CLIENT_SPID ?=
 RA_CLIENT_LINKABLE ?= 0
 
 
-## local attestation only
-# OBJS_CLIENT = test2/KII.c test2/secretsharing.pb-c.c
-# OBJS_SERVER = test2/local_attestation.c test2/secretsharing.pb-c.c  test2/CRG.c
-
-## local+remote attestation 2 players
-# OBJS_CLIENT = test3/KII.c test3/secretsharing.pb-c.c
-# OBJS_SERVER = test3/CRG.c test3/client.c test3/server.c test3/secretsharing.pb-c.c test3/local_attestation.c
-
 ## multiple player (>2) remote+local attestation
-OBJS_CLIENT = multiple_tee/KII.c multiple_tee/secretsharing.pb-c.c
-OBJS_SERVER = multiple_tee/CRG.c multiple_tee/client.c multiple_tee/server.c multiple_tee/secretsharing.pb-c.c multiple_tee/local_attestation.c
+OBJS_CLIENT = pkg/KII.c pkg/secretsharing.pb-c.c
+OBJS_SERVER = pkg/CRG.c pkg/client.c pkg/server.c pkg/secretsharing.pb-c.c pkg/local_attestation.c
 
 .PHONY: all
 all: app epid
@@ -47,18 +39,6 @@ ssl/server.crt: ssl/ca_config.conf
 	openssl genrsa -out ssl/server.key 2048
 	openssl req -new -key ssl/server.key -out ssl/server.csr -config ssl/ca_config.conf
 	openssl x509 -req -days 360 -in ssl/server.csr -CA ssl/ca.crt -CAkey ssl/ca.key -CAcreateserial -out ssl/server.crt
-
-######################### CLIENT/SERVER OBJECT FILES ###########################
-
-# # Compile the source files into object files
-# src1/client.o: src1/client.c
-# 	$(CC) -c $< $(CFLAGS) -o $@
-
-# src1/server.o: src1/server.c
-# 	$(CC) -c $< $(CFLAGS) -o $@
-
-# src1/PlayerInfo.pb-c.o: src1/PlayerInfo.pb-c.c
-# 	$(CC) -c $< $(CFLAGS) -o $@
 
 ######################### CLIENT/SERVER EXECUTABLES ###########################
 

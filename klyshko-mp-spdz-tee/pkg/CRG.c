@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2025 - for information on the respective copyright owner
+ * see the NOTICE file and/or the repository https://github.com/carbynestack/klyshko.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #define EXTERN
 #include "vars.h"
 
@@ -5,7 +11,7 @@ char **kii_endpoints;
 #include <fcntl.h>
 #include <sys/stat.h>
 
-// Step 1: Define an enumeration for tuple types
+// Define an enumeration for tuple types
 typedef enum
 {
     BIT_GFP,
@@ -21,7 +27,7 @@ typedef enum
     TUPLE_TYPE_COUNT // Count of types, useful for bounds checking
 } TupleType;
 
-// Step 2: Arrays for command arguments and file paths corresponding to the tuple types
+// Arrays for command arguments and file paths corresponding to the tuple types
 const char *arg1ByType[TUPLE_TYPE_COUNT] = {
     "--nbits",     // BIT_GFP
     "--nbits",     // BIT_GF2N
@@ -35,31 +41,11 @@ const char *arg1ByType[TUPLE_TYPE_COUNT] = {
     "--ntriples"   // MULTIPLICATION_TRIPLE_GF2N
 };
 
-const char *arg2FormatByType[TUPLE_TYPE_COUNT] = {
-    "0,%s", // BIT_GFP
-    "%s,0", // BIT_GF2N
-    "0,%d", // INPUT_MASK_GFP (where n/3 is used)
-    "%d,0", // INPUT_MASK_GF2N (where n/3 is used)
-    "%s",   // INVERSE_TUPLE_GFP
-    "%s",   // INVERSE_TUPLE_GF2N
-    "0,%s", // SQUARE_TUPLE_GFP
-    "%s,0", // SQUARE_TUPLE_GF2N
-    "0,%s", // MULTIPLICATION_TRIPLE_GFP
-    "%s,0"  // MULTIPLICATION_TRIPLE_GF2N
-};
+// arg2FormatByType array removed - replaced with explicit switch statement
+// to prevent format string vulnerabilities (format strings are now hardcoded constants)
 
-const char *tupleFileByType[TUPLE_TYPE_COUNT] = {
-    "%s-p-128/Bits-p-P%s",     // BIT_GFP
-    "%s-2-40/Bits-2-P%s",      // BIT_GF2N
-    "%s-p-128/Triples-p-P%s",  // INPUT_MASK_GFP
-    "%s-2-40/Triples-2-P%s",   // INPUT_MASK_GF2N
-    "%s-p-128/Inverses-p-P%s", // INVERSE_TUPLE_GFP
-    "%s-2-40/Inverses-2-P%s",  // INVERSE_TUPLE_GF2N
-    "%s-p-128/Squares-p-P%s",  // SQUARE_TUPLE_GFP
-    "%s-2-40/Squares-2-P%s",   // SQUARE_TUPLE_GF2N
-    "%s-p-128/Triples-p-P%s",  // MULTIPLICATION_TRIPLE_GFP
-    "%s-2-40/Triples-2-P%s"    // MULTIPLICATION_TRIPLE_GF2N
-};
+// tupleFileByType array removed - replaced with explicit switch statement
+// to prevent format string vulnerabilities (format strings are now hardcoded constants)
 
 // Helper function to convert string to TupleType enum
 TupleType getTupleType(const char *tuple_type_str)
@@ -91,7 +77,7 @@ TupleType getTupleType(const char *tuple_type_str)
 
 void get_random_hex(char *hex_str, int length)
 {
-    const char hex_chars[] = "0123456789abcdef"; // Use lowercase letters
+    const char hex_chars[] = "0123456789abcdef"; 
     unsigned char random_bytes[length];
 
     // Get truly random bytes from the system
@@ -123,10 +109,8 @@ void writeFile(const char *filename, const char *text)
         // perror("opened successfully");
     }
 
-    // Write the text to the file
     fprintf(file, "%s", text);
 
-    // Close the file
     fclose(file);
 }
 
@@ -164,16 +148,11 @@ void create_mac_key_shares(int pc, int pn, char *Player_MAC_Keys_p[], char *Play
                 macKeyShare = Player_MAC_Keys_2[playerNumber];
             }
 
-            // printf("%s\n", macKeyShare);
-
             char dataToWrite[256];
 
-            // printf("----- TRYING TO WRITE for MAC key share for player %d written to %s\n",
-            //        playerNumber, macKeyShareFile);
             snprintf(dataToWrite, sizeof(dataToWrite), "%d %s", pc, macKeyShare);
             writeFile(macKeyShareFile, dataToWrite);
 
-            // printf("MAC key share for player %d written to %s\n", playerNumber, macKeyShareFile);
         }
     }
 }
@@ -222,14 +201,11 @@ void read_file(const char *file_path, char **buffer)
 
 int main(int argc, char **argv)
 {
-    // printf("Entered the CRG main function.\n\n");
-
     int ret;
     int other_player_number = 0;
     char *prime = NULL;
     read_file("/etc/kii/params/prime", &prime);
     char Seed[17];
-    // char* n = "10000";
 
     get_random_hex(Seed, 16);
     printf("Getting environment variables ...\n");
@@ -259,15 +235,11 @@ int main(int argc, char **argv)
     char *b_port = env_values[7];
     // Convert to integers
     kii_job_id_defined = kii_job_id_str; // Check for NULL
-    // printf("kii_job_id_defined: %s\n", kii_job_id_defined);
     player_number_defined = player_number_str ? atoi(player_number_str) : 0;
     number_of_players = number_of_players_str ? atoi(number_of_players_str) : 0;
     base_port = b_port ? atoi(b_port) : 0;
     // EOC for getting the env variables and storing them inside main fuction
 
-    //
-
-    //***$$$***
     kii_endpoints = (char **)malloc(number_of_players * sizeof(char *));
     for (int i = 0; i < number_of_players; i++)
     {
@@ -284,9 +256,6 @@ int main(int argc, char **argv)
         }
     }
 
-    // printf("ok\n");
-
-    // ***$$$***
 
 #if defined(MBEDTLS_DEBUG_C)
     mbedtls_debug_set_threshold(DEBUG_LEVEL);
@@ -340,19 +309,61 @@ int main(int argc, char **argv)
     }
 
     char arg2[256] = {0};
-    if (strstr(arg2FormatByType[tuple_type], "%d") != NULL)
+    // Use explicit format strings in switch statement to prevent format string vulnerabilities
+    // All format strings are hardcoded constants, not user-controlled
+    // Validate tuple_type is within bounds
+    if (tuple_type >= TUPLE_TYPE_COUNT)
     {
-        snprintf(arg2, sizeof(arg2), arg2FormatByType[tuple_type], atoi(n) / 3);
+        fprintf(stderr, "Error: Invalid tuple type index: %d\n", tuple_type);
+        return 1;
     }
-    else
+    
+    // Validate n is not NULL before using in format strings
+    if (n == NULL)
     {
-        snprintf(arg2, sizeof(arg2), arg2FormatByType[tuple_type], n);
+        fprintf(stderr, "Error: KII_TUPLES_PER_JOB environment variable not set\n");
+        return 1;
+    }
+    
+    switch (tuple_type)
+    {
+        case BIT_GFP:
+            snprintf(arg2, sizeof(arg2), "0,%s", n);
+            break;
+        case BIT_GF2N:
+            snprintf(arg2, sizeof(arg2), "%s,0", n);
+            break;
+        case INPUT_MASK_GFP:
+            snprintf(arg2, sizeof(arg2), "0,%d", atoi(n) / 3);
+            break;
+        case INPUT_MASK_GF2N:
+            snprintf(arg2, sizeof(arg2), "%d,0", atoi(n) / 3);
+            break;
+        case INVERSE_TUPLE_GFP:
+        case INVERSE_TUPLE_GF2N:
+            snprintf(arg2, sizeof(arg2), "%s", n);
+            break;
+        case SQUARE_TUPLE_GFP:
+            snprintf(arg2, sizeof(arg2), "0,%s", n);
+            break;
+        case SQUARE_TUPLE_GF2N:
+            snprintf(arg2, sizeof(arg2), "%s,0", n);
+            break;
+        case MULTIPLICATION_TRIPLE_GFP:
+            snprintf(arg2, sizeof(arg2), "0,%s", n);
+            break;
+        case MULTIPLICATION_TRIPLE_GF2N:
+            snprintf(arg2, sizeof(arg2), "%s,0", n);
+            break;
+        default:
+            fprintf(stderr, "Error: Unhandled tuple type: %d\n", tuple_type);
+            return 1;
     }
 
     int player_count = atoi(number_of_players_str);
     int player_number = atoi(player_number_str);
     create_mac_key_shares(player_count, player_number, Player_MAC_Keys_p, Player_MAC_Keys_2);
-    printf("Step 7: Running Fake Offline as execvp process\n");
+    printf("Running Fake Offline as execvp process\n");
     box_out("[7] Running Fake Offline.\n");
     fflush(stdout);
     char *args[] = {
@@ -369,29 +380,106 @@ int main(int argc, char **argv)
         NULL                    // Terminate with NULL
     };
 
-    // Debug print
-    for (int i = 0; args[i] != NULL; ++i)
-    {
-        printf("%s ", args[i]); // Print each argument followed by a space
-    }
-    printf("\n");
-
-    // Step 8: Execute ./Fake-Offline.x using execvp
+    
+    // Execute ./Fake-Offline.x using execvp
     int length = sizeof(args) / sizeof(args[0]);
 
     // Join cmd array into a single command string
     char cmdString[512] = {0}; // Buffer to hold the concatenated cmd
+    size_t cmdString_len = 0;  // Track current length to prevent buffer overflow
     for (int i = 0; i < length; ++i)
     {
         if (args[i] != NULL)
-        {                               // Avoid null pointers
-            strcat(cmdString, args[i]); // Add the argument
-            strcat(cmdString, " ");     // Add a space between arguments
+        {
+            // Calculate remaining space in buffer (leave 1 byte for null terminator)
+            size_t remaining = sizeof(cmdString) - cmdString_len - 1;
+            
+            // Get the length of the argument to append (safely with strnlen)
+            size_t arg_len = strnlen(args[i], remaining);
+            
+            // Check if we have enough space for the argument
+            // For first argument: need space for arg + null terminator
+            // For subsequent arguments: need space for space + arg + null terminator
+            size_t space_needed = (cmdString_len > 0) ? arg_len + 1 : arg_len; // +1 for space before arg if not first
+            
+            if (space_needed <= remaining)
+            {
+                // Use snprintf to safely append argument (safer than strncat)
+                // For first argument: just append the argument
+                // For subsequent arguments: append space + argument
+                int written;
+                if (cmdString_len > 0)
+                {
+                    // Not the first argument - add space before it
+                    written = snprintf(cmdString + cmdString_len, remaining + 1, " %s", args[i]);
+                }
+                else
+                {
+                    // First argument - no leading space
+                    written = snprintf(cmdString + cmdString_len, remaining + 1, "%s", args[i]);
+                }
+                
+                // Check if snprintf succeeded (written >= 0) and didn't truncate (written < remaining + 1)
+                if (written < 0)
+                {
+                    fprintf(stderr, "Error: snprintf failed while building command string\n");
+                    break;
+                }
+                else if ((size_t)written >= remaining + 1)
+                {
+                    fprintf(stderr, "Error: Command string too long, cannot add argument: %s\n", args[i]);
+                    break;
+                }
+                
+                cmdString_len += written;  // Update length with actual bytes written
+            }
+            else
+            {
+                fprintf(stderr, "Error: Command string too long, cannot add argument: %s\n", args[i]);
+                break;
+            }
         }
     }
 
     char destination_path[1024] = {0};
-    snprintf(destination_path, sizeof(destination_path), tupleFileByType[tuple_type], number_of_players_str, player_number_str);
+    // Use explicit format strings in switch statement to prevent format string vulnerabilities
+    // All format strings are hardcoded constants, not user-controlled
+    switch (tuple_type)
+    {
+        case BIT_GFP:
+            snprintf(destination_path, sizeof(destination_path), "%s-p-128/Bits-p-P%s", number_of_players_str, player_number_str);
+            break;
+        case BIT_GF2N:
+            snprintf(destination_path, sizeof(destination_path), "%s-2-40/Bits-2-P%s", number_of_players_str, player_number_str);
+            break;
+        case INPUT_MASK_GFP:
+            snprintf(destination_path, sizeof(destination_path), "%s-p-128/Triples-p-P%s", number_of_players_str, player_number_str);
+            break;
+        case INPUT_MASK_GF2N:
+            snprintf(destination_path, sizeof(destination_path), "%s-2-40/Triples-2-P%s", number_of_players_str, player_number_str);
+            break;
+        case INVERSE_TUPLE_GFP:
+            snprintf(destination_path, sizeof(destination_path), "%s-p-128/Inverses-p-P%s", number_of_players_str, player_number_str);
+            break;
+        case INVERSE_TUPLE_GF2N:
+            snprintf(destination_path, sizeof(destination_path), "%s-2-40/Inverses-2-P%s", number_of_players_str, player_number_str);
+            break;
+        case SQUARE_TUPLE_GFP:
+            snprintf(destination_path, sizeof(destination_path), "%s-p-128/Squares-p-P%s", number_of_players_str, player_number_str);
+            break;
+        case SQUARE_TUPLE_GF2N:
+            snprintf(destination_path, sizeof(destination_path), "%s-2-40/Squares-2-P%s", number_of_players_str, player_number_str);
+            break;
+        case MULTIPLICATION_TRIPLE_GFP:
+            snprintf(destination_path, sizeof(destination_path), "%s-p-128/Triples-p-P%s", number_of_players_str, player_number_str);
+            break;
+        case MULTIPLICATION_TRIPLE_GF2N:
+            snprintf(destination_path, sizeof(destination_path), "%s-2-40/Triples-2-P%s", number_of_players_str, player_number_str);
+            break;
+        default:
+            fprintf(stderr, "Error: Unhandled tuple type for destination path: %d\n", tuple_type);
+            return 1;
+    }
 
     // Construct the full command with the copy operation
     char fullCommand[1024] = {0}; // Buffer for the full command

@@ -1,6 +1,6 @@
 # Copyright (C) 2023 Gramine contributors
 # SPDX-License-Identifier: BSD-3-Clause
-
+# Modified for CRG in TEE, 2025
 # Client manifest file
 
 loader.entrypoint = "file:{{ gramine.libos }}"
@@ -25,10 +25,6 @@ fs.mounts = [
   { path = "/server", uri = "file:server" },
   { path = "/client", uri = "file:client" },
   { type = "encrypted", path = "/Player-Data/", uri="file:Player-Data/", key_name = "_sgx_mrenclave"},
-#  { type = "encrypted", path = "/Player-Data/2-p-128/Player-MAC-Keys-p-P0", uri="file:Player-Data/2-p-128/Player-MAC-Keys-p-P0", key_name = "_sgx_mrenclave"},
-#  { type = "encrypted", path = "/Player-Data/2-p-128/Player-MAC-Keys-p-P1", uri="file:Player-Data/2-p-128/Player-MAC-Keys-p-P1", key_name = "_sgx_mrenclave"},
-#  { type = "encrypted", path = "/Player-Data/2-2-40/Player-MAC-Keys-2-P0", uri="file:Player-Data/2-2-40/Player-MAC-Keys-2-P0", key_name = "_sgx_mrenclave"},
-#  { type = "encrypted", path = "/Player-Data/2-2-40/Player-MAC-Keys-2-P1", uri="file:Player-Data/2-2-40/Player-MAC-Keys-2-P1", key_name = "_sgx_mrenclave"},
   { path = "/lib2/", uri="file:/lib/x86_64-linux-gnu/"},
   { path = "/Fake-Offline.x", uri="file:Fake-Offline.x"},
   { path = "/bin/bash", uri = "file:/bin/bash" },

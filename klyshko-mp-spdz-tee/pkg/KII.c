@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2025 - for information on the respective copyright owner
+ * see the NOTICE file and/or the repository https://github.com/carbynestack/klyshko.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #include "vars.h"
 #define MAC_KEY_SHARE_P_PATH "/etc/kii/secret-params/mac_key_share_p"
 #define MAC_KEY_SHARE_2_PATH "/etc/kii/secret-params/mac_key_share_2"
@@ -30,7 +36,14 @@ static void my_debug(void *ctx, int level, const char *file, int line, const cha
 
 static int parse_hex(const char *hex, void *buffer, size_t buffer_size)
 {
-    if (strlen(hex) != buffer_size * 2)
+    // Use strnlen to safely check string length and prevent over-read if not null-terminated
+    // Use a reasonable maximum (expected length + some margin) to detect non-null-terminated strings
+    size_t max_len = buffer_size * 2 + 10;
+    size_t hex_len = strnlen(hex, max_len);
+    
+    // Check if string length matches expected length
+    // If hex_len equals max_len, the string is longer than expected or not null-terminated
+    if (hex_len != buffer_size * 2 || hex_len == max_len)
         return -1;
 
     for (size_t i = 0; i < buffer_size; i++)
@@ -138,8 +151,6 @@ void read_file(const char *file_path, char **buffer)
 
 int main(int argc, char **argv)
 {
-    // box_out("KII entry.");
-    //  printf("Inside KII.c\n");
     int ret;
     size_t len;
     mbedtls_net_context server_fd;
@@ -267,7 +278,12 @@ int main(int argc, char **argv)
                 mbedtls_printf("Cannot parse ISV_PROD_ID!\n");
                 return 1;
             }
-            memcpy(g_expected_isv_prod_id, &isv_prod_id, sizeof(isv_prod_id));
+            // Use safe_memcpy wrapper with explicit bounds checking
+            if (safe_memcpy(g_expected_isv_prod_id, ISV_ID_BUF_SIZE, &isv_prod_id, ISV_ID_SRC_SIZE) != 0)
+            {
+                mbedtls_printf("Error: Failed to copy ISV_PROD_ID (buffer overflow or invalid parameters)\n");
+                return 1;
+            }
         }
 
         if (!strcmp(argv[4], "0"))
@@ -284,7 +300,12 @@ int main(int argc, char **argv)
                 mbedtls_printf("Cannot parse ISV_SVN\n");
                 return 1;
             }
-            memcpy(g_expected_isv_svn, &isv_svn, sizeof(isv_svn));
+            // Use safe_memcpy wrapper with explicit bounds checking
+            if (safe_memcpy(g_expected_isv_svn, ISV_ID_BUF_SIZE, &isv_svn, ISV_ID_SRC_SIZE) != 0)
+            {
+                mbedtls_printf("Error: Failed to copy ISV_SVN (buffer overflow or invalid parameters)\n");
+                return 1;
+            }
         }
     }
     else if (ra_tls_verify_lib)
@@ -302,8 +323,10 @@ int main(int argc, char **argv)
     mbedtls_printf("\n  . Seeding the random number generator...");
     fflush(stdout);
 
+    // Use strnlen to safely get string length and prevent over-read if not null-terminated
+    size_t pers_len = strnlen(pers, 64);
     ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
-                                (const unsigned char *)pers, strlen(pers));
+                                (const unsigned char *)pers, pers_len);
     if (ret != 0)
     {
         mbedtls_printf(" failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", ret);
@@ -449,8 +472,6 @@ int main(int argc, char **argv)
     read_file(MAC_KEY_SHARE_2_PATH, &macKeyShare_2);
     message.mackeyshare_p = macKeyShare_p;
     message.mackeyshare_2 = macKeyShare_2;
-    // message.mackeyshare_2 = "f0cf6099e629fd0bda2de3f9515ab72b"; //removed the hardcoding of the
-    // shares message.mackeyshare_p = "-88222337191559387830816715872691188861";
     unsigned length = secret_share__get_packed_size(&message);
 
     if (length == 0)

@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2025 - for information on the respective copyright owner
+ * see the NOTICE file and/or the repository https://github.com/carbynestack/klyshko.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #include "vars.h"
 
 static void my_debug(void *ctx, int level, const char *file, int line, const char *str)
@@ -31,7 +37,6 @@ static ssize_t file_read(const char *path, char *buf, size_t count)
 
 int local_attestation(char *Player_MAC_Keys_p[], char *Player_MAC_Keys_2[])
 {
-    // printf("Inside local attestation function\n");
     int ret;
     size_t len;
     mbedtls_net_context listen_fd;
@@ -113,8 +118,10 @@ int local_attestation(char *Player_MAC_Keys_p[], char *Player_MAC_Keys_2[])
     mbedtls_printf("  . Seeding the random number generator...");
     fflush(stdout);
 
+    // Use strnlen to safely get string length and prevent over-read if not null-terminated
+    size_t pers_len = strnlen(pers, 64);
     ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
-                                (const unsigned char *)pers, strlen(pers));
+                                (const unsigned char *)pers, pers_len);
     if (ret != 0)
     {
         mbedtls_printf(" failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", ret);
@@ -201,15 +208,6 @@ int local_attestation(char *Player_MAC_Keys_p[], char *Player_MAC_Keys_2[])
 
     mbedtls_printf(" ok\n");
 
-    // reset:
-    // #ifdef MBEDTLS_ERROR_C
-    //     if (ret != 0) {
-    //         char error_buf[100];
-    //         mbedtls_strerror(ret, error_buf, sizeof(error_buf));
-    //         mbedtls_printf("Last error was: %d - %s\n\n", ret, error_buf);
-    //     }
-    // #endif
-
     mbedtls_net_free(&client_fd);
 
     mbedtls_ssl_session_reset(&ssl);
@@ -292,11 +290,41 @@ int local_attestation(char *Player_MAC_Keys_p[], char *Player_MAC_Keys_2[])
     printf(" Step 3 Recieved the Mac shares from KII \n");
     // Player_MAC_Keys_p[player_number_defined] = message->mackeyshare_p;
     // Player_MAC_Keys_2[player_number_defined] = message->mackeyshare_2;
-    memcpy(Player_MAC_Keys_p[player_number_defined], message->mackeyshare_p, KEY_LENGTH);
-    memcpy(Player_MAC_Keys_2[player_number_defined], message->mackeyshare_2, KEY_LENGTH);
-
-    // printf("mackeyshare_2=%s", Player_MAC_Keys_2[player_number_defined]); // required field
-    // printf("  mackeyshare_p=%s\n", Player_MAC_Keys_p[player_number_defined]);
+    
+    // Validate inputs before memcpy to prevent buffer overflow
+    if (message == NULL || 
+        message->mackeyshare_p == NULL || 
+        message->mackeyshare_2 == NULL ||
+        player_number_defined < 0 || 
+        player_number_defined >= number_of_players ||
+        Player_MAC_Keys_p[player_number_defined] == NULL ||
+        Player_MAC_Keys_2[player_number_defined] == NULL)
+    {
+        fprintf(stderr, "Error: Invalid input parameters for memcpy\n");
+        if (message != NULL)
+        {
+            secret_share__free_unpacked(message, NULL);
+        }
+        return -1;
+    }
+    
+    // Use safe_memcpy wrapper with explicit bounds checking
+    // Destination buffers are allocated as MAC_KEY_BUF_SIZE bytes (see CRG.c allocation)
+    if (safe_memcpy(Player_MAC_Keys_p[player_number_defined], MAC_KEY_BUF_SIZE,
+                   message->mackeyshare_p, MAC_KEY_BUF_SIZE) != 0)
+    {
+        fprintf(stderr, "Error: Failed to copy MAC key share p (buffer overflow or invalid parameters)\n");
+        secret_share__free_unpacked(message, NULL);
+        return -1;
+    }
+    
+    if (safe_memcpy(Player_MAC_Keys_2[player_number_defined], MAC_KEY_BUF_SIZE,
+                   message->mackeyshare_2, MAC_KEY_BUF_SIZE) != 0)
+    {
+        fprintf(stderr, "Error: Failed to copy MAC key share 2 (buffer overflow or invalid parameters)\n");
+        secret_share__free_unpacked(message, NULL);
+        return -1;
+    }
 
     // Free the unpacked message
     secret_share__free_unpacked(message, NULL);
