@@ -87,7 +87,26 @@ sgx-webhook-6cdb9994c5-6jhw4 1/1   Running   0   42m
 
 ## Step 2: SGX Security Configurations
 
-TBD
+To enable attestation of Intel SGX TEE, the private key (enclave-key.pem) must be set, which will be used by Gramine to sign the hardware.
+
+To generate a new key, use open ssl.
+```
+openssl genrsa -out enclave-key.pem 3072
+```
+
+The same enclave-key.pem must be present in both the VCPs, else the remote attestation will fail.
+
+For more information refer the [Gramine Docs](https://gramine.readthedocs.io/en/stable/python/writing-sgx-sign-plugins.html)
+
+
+> **Note**: In kii-run.sh, the flags RA_TLS_ALLOW_DEBUG_ENCLAVE_INSECURE and RA_TLS_ALLOW_OUTDATED_TCB_INSECURE have been enabled for development and testing purposes.
+
+For production deployments, set these flags to 0 before building the image.
+
+```
+export RA_TLS_ALLOW_DEBUG_ENCLAVE_INSECURE=0
+export RA_TLS_ALLOW_OUTDATED_TCB_INSECURE=0
+```
 
 
 ## Step 3: Bringing Up Carbyne Stack
@@ -134,7 +153,11 @@ These will pull required docker images for TEE acceleration and use default regi
 
 ## Step 3: Enabling SGX in Klyshko Config
 
-Set ```sgxEnabled: true``` in ```0450.klyshko-config.yaml``` in the `carbynestack/deployments\helmfile.d` folder. Setting this flag to true, will inject SGX specific configuration for all generator pods.
+After the pods have been deployed in the two clusters, use --sgx-enabled flag. This will enable the SGX mode in the klyshko operator.
+
+```
+kubectl patch deployment klyshko-controller-manager -n default --type='json' -p='[{"op":"add","path":"/spec/template/spec/containers/1/args/-","value":"--sgx-enabled"}]'
+```
 
 ## Troubleshooting
 
