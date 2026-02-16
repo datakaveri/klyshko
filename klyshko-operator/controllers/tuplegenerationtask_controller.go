@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -424,12 +425,15 @@ func (r *TupleGenerationTaskReconciler) createProvisionerPod(ctx context.Context
 		logger.V(logging.DEBUG).Info("Provisioner pod already exists")
 		return found, nil
 	}
-	pod := &v1.Pod{
+		pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name.Name,
 			Namespace: name.Namespace,
 		},
 		Spec: v1.PodSpec{
+			SecurityContext: &v1.PodSecurityContext{
+				FSGroup: pointer.Int64(1000),
+			},
 			Containers: []v1.Container{{
 				Name:  "provisioner",
 				Image: r.ProvisionerImage,
@@ -554,6 +558,9 @@ func (r *TupleGenerationTaskReconciler) createGeneratorPod(ctx context.Context, 
 			},
 		},
 		Spec: v1.PodSpec{
+			SecurityContext: &v1.PodSecurityContext{
+				FSGroup: pointer.Int64(1000),
+			},
 			Affinity: podSpecTemplate.Spec.Affinity,
 			Containers: []v1.Container{
 				{
